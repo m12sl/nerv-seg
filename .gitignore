@@ -1,0 +1,5 @@
+./models/
+./data/
+
+*.py[doc]
+.idea/
