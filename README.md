@@ -1,5 +1,7 @@
 # Kaggle Ultrasound Nerve Segmentation
 
+Based on https://github.com/jocicmarko/ultrasound-nerve-segmentation solution.
+
 Content:
 ```
 .
@@ -42,10 +44,16 @@ Current status:
 
 TODO:
 
-1. Add opencv3 into Dockerfile
-2. Make a submission
-3. Enhance the model
+1. Add validation into train procedure
+2. Investigate errors
+3. Modify network
+4. Modify preprocessing
 
-Solution code based on https://github.com/jocicmarko/ultrasound-nerve-segmentation solution.
+Infrastructure TODO:
+
+1. Add opencv for python3 into Dockerfile (for future usage)
+1. Move all processes into docker
+
+
 
 Main idea: rich augmentation technics and model tuning: BN and so on.
