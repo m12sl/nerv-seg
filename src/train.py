@@ -5,6 +5,7 @@ import numpy as np
 
 import argparse
 import os
+import errno
 import pickle
 import json
 from tqdm import tqdm
@@ -23,6 +24,15 @@ def preprocess(imgs, args):
 
 
 def train_and_predict(args):
+    path = args.save_dir
+    try:
+        os.makedirs(path)
+    except OSError as exc:
+        if exc.errno == errno.EEXIST and os.path.isdir(path):
+            pass
+        else:
+            raise
+
     print('-'*30)
     print('Loading and preprocessing train data...')
     print('-'*30)
