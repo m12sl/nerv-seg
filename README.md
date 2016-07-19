@@ -46,9 +46,9 @@ Current status:
 3. Train runnable
 
 TODO:
-0. Add submission builder
 1. Add opencv3 into Dockerfile
-2. Make a submission!
+2. Make a submission
+3. Enhance the model
 
 Solution code based on https://github.com/jocicmarko/ultrasound-nerve-segmentation solution.
 
