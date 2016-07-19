@@ -2,6 +2,7 @@ from __future__ import print_function
 
 import os
 import numpy as np
+import argparse
 
 import cv2
 
@@ -12,7 +13,7 @@ image_cols = 580
 
 
 def create_train_data(args):
-    train_data_path = os.path.join(data_path, 'train')
+    train_data_path = os.path.join(args.data_path, 'raw/train')
     images = os.listdir(train_data_path)
     total = len(images) / 2
 
@@ -41,19 +42,19 @@ def create_train_data(args):
         i += 1
     print('Loading done.')
 
-    np.save('imgs_train.npy', imgs)
-    np.save('imgs_mask_train.npy', imgs_mask)
+    np.save(os.path.join(args.data_path, 'processed/imgs_train.npy'), imgs)
+    np.save(os.path.join(args.data_path, 'processed/imgs_mask_train.npy'), imgs_mask)
     print('Saving to .npy files done.')
 
 
-def load_train_data():
-    imgs_train = np.load('imgs_train.npy')
-    imgs_mask_train = np.load('imgs_mask_train.npy')
+def load_train_data(args):
+    imgs_train = np.load(os.path.join(args.data_path, 'processed/imgs_train.npy'))
+    imgs_mask_train = np.load(os.path.join(args.data_path, 'processed/imgs_mask_train.npy'))
     return imgs_train, imgs_mask_train
 
 
-def create_test_data():
-    train_data_path = os.path.join(data_path, 'test')
+def create_test_data(args):
+    train_data_path = os.path.join(args.data_path, 'raw/test')
     images = os.listdir(train_data_path)
     total = len(images)
 
@@ -78,16 +79,25 @@ def create_test_data():
         i += 1
     print('Loading done.')
 
-    np.save('imgs_test.npy', imgs)
-    np.save('imgs_id_test.npy', imgs_id)
+    np.save(os.path.join(args.data_path, 'processed/imgs_test.npy'), imgs)
+    np.save(os.path.join(args.data_path, 'processed/imgs_id_test.npy'), imgs_id)
     print('Saving to .npy files done.')
 
 
-def load_test_data():
-    imgs_test = np.load('imgs_test.npy')
-    imgs_id = np.load('imgs_id_test.npy')
+def load_test_data(args):
+    imgs_test = np.load(os.path.join(args.data_path, 'processed/imgs_test.npy'))
+    imgs_id = np.load(os.path.join(args.data_path, 'processed/imgs_id_test.npy'))
     return imgs_test, imgs_id
 
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--data_path', type=str, default='../data/',
+                        help='path to data folder: raw and processed')
+    args = parser.parse_args()
+    create_train_data(args)
+    create_test_data(args)
+
+
 if __name__ == '__main__':
-    create_train_data()
-    create_test_data()
+    main()

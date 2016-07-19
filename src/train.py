@@ -26,10 +26,10 @@ def train_and_predict(args):
     print('-'*30)
     print('Loading and preprocessing train data...')
     print('-'*30)
-    imgs_train, imgs_mask_train = load_train_data()
+    imgs_train, imgs_mask_train = load_train_data(args)
 
-    imgs_train = preprocess(imgs_train)
-    imgs_mask_train = preprocess(imgs_mask_train)
+    imgs_train = preprocess(imgs_train, args)
+    imgs_mask_train = preprocess(imgs_mask_train, args)
 
     imgs_train = imgs_train.astype('float32')
     mean = np.mean(imgs_train)  # mean for data centering
@@ -51,13 +51,13 @@ def train_and_predict(args):
     print('-'*30)
     print('Fitting model...')
     print('-'*30)
-    model.fit(imgs_train, imgs_mask_train, batch_size=args.batch_size, nb_epoch=args.num_epoch, verbose=1, shuffle=True,
+    model.fit(imgs_train, imgs_mask_train, batch_size=args.batch_size, nb_epoch=args.num_epochs, verbose=1, shuffle=True,
               callbacks=[model_checkpoint])
 
     print('-'*30)
     print('Loading and preprocessing test data...')
     print('-'*30)
-    imgs_test, imgs_id_test = load_test_data()
+    imgs_test, imgs_id_test = load_test_data(args)
     imgs_test = preprocess(imgs_test)
 
     imgs_test = imgs_test.astype('float32')
@@ -78,9 +78,10 @@ def train_and_predict(args):
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument('--data_path', type=str, default='../data/',
+                        help='path to data folder: raw and processed')
     parser.add_argument('--save_dir', type=str, default='../models/tmp',
                         help='directory to store checkpointed models')
-
     parser.add_argument('--init_from', type=str, default=None,
                         help="""continue training from saved model at this path. Path must contain files saved by previous training process:
                 'config.pkl'        : configuration;

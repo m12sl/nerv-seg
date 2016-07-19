@@ -77,7 +77,7 @@ RUN apt-get update && apt-get install -y \
 RUN pip install --upgrade six
 
 RUN pip install --upgrade --no-deps git+git://github.com/Theano/Theano.git
-RUN pip3 install --upgrade --ignore-installed git+git://github.com/Theano/Theano.git
+RUN pip3 install --upgrade --no-deps git+git://github.com/Theano/Theano.git
 
 
 # Clone Keras repo and move into it
@@ -86,8 +86,16 @@ RUN cd /root && git clone https://github.com/fchollet/keras.git && cd keras && \
   python setup.py install && \
   python3 setup.py install
 
-VOLUME ['/src', '/data', '/models']
+RUN apt install -y python-opencv
 
+# Mount volumes for actual
+VOLUME ["/src", "/data", "/models"]
 
-# Set ~/keras as working directory
+# Use Theano with GPU
+ENV CUDA_ROOT /usr/local/cuda
+
+RUN echo "[global]\n\
+device = gpu\n\
+floatX = float32\n" > ~/.theanorc
+
 WORKDIR /

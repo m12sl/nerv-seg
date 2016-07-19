@@ -19,7 +19,7 @@ def dice_coef_loss(y_true, y_pred):
 
 
 def UNet(args):
-    inputs = Input((1, args.img_rows, args.img_cols))
+    inputs = Input((1, args.img_height, args.img_width))
     conv1 = Convolution2D(32, 3, 3, activation='relu', border_mode='same')(inputs)
     conv1 = Convolution2D(32, 3, 3, activation='relu', border_mode='same')(conv1)
     pool1 = MaxPooling2D(pool_size=(2, 2))(conv1)
