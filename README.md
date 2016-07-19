@@ -1,6 +1,7 @@
 # Kaggle Ultrasound Nerve Segmentation
 
 Content:
+```
 .
 ├── data
 │   ├── processed -- temp and final results will be here
@@ -21,7 +22,7 @@ Content:
     ├── submission.py
     ├── test_gpu.py -- Theano use GPU or not
     └── train.py
-
+```
 Usage:
 
 1. Download data into `data/raw` and unzip
