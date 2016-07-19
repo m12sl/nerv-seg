@@ -68,7 +68,7 @@ def train_and_predict(args):
     print('Loading and preprocessing test data...')
     print('-'*30)
     imgs_test, imgs_id_test = load_test_data(args)
-    imgs_test = preprocess(imgs_test)
+    imgs_test = preprocess(imgs_test, args)
 
     imgs_test = imgs_test.astype('float32')
     imgs_test -= mean
@@ -77,13 +77,15 @@ def train_and_predict(args):
     print('-'*30)
     print('Loading saved weights...')
     print('-'*30)
-    model.load_weights('unet.hdf5')
+    model.load_weights(os.path.join(args.save_dir, 'best_unet.hdf5'))
 
     print('-'*30)
     print('Predicting masks on test data...')
     print('-'*30)
     imgs_mask_test = model.predict(imgs_test, verbose=1)
-    np.save('imgs_mask_test.npy', imgs_mask_test)
+
+    # TODO: rewrite this
+    np.save(os.path.join(args.data_path, 'processed/imgs_mask_test.npy'), imgs_mask_test)
 
 
 def main():

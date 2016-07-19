@@ -1,5 +1,27 @@
 # Kaggle Ultrasound Nerve Segmentation
 
+Content:
+.
+├── data
+│   ├── processed -- temp and final results will be here
+│   └── raw -- place kaggle data here
+├── docker
+│   └── Dockerfile -- python/Theano/keras with CUDA/CUDNN
+├── ker.sh -- script for running nvidia-cuda
+├── Makefile -- control panel for the whole project
+├── models --
+│   ├── tmp
+│   └── x.txt
+├── README.md
+└── src
+    ├── data.py -- preprocessing and data utils
+    ├── data.pyc
+    ├── model.py -- u-net model on keras
+    ├── model.pyc
+    ├── submission.py
+    ├── test_gpu.py -- Theano use GPU or not
+    └── train.py
+
 Usage:
 
 1. Download data into `data/raw` and unzip
@@ -13,6 +35,7 @@ chmod +x ker.sh
 Be aware about path:
 local dirs are mounted into root in docker container:
 `src/->/src`, `data/->/data`, `models/->/models`
+5. Build submission `make submission`
 
 
 

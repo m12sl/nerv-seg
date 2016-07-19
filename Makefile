@@ -14,3 +14,6 @@ docker:
 
 test:
 	NV_GPU=0 ./ker.sh python /src/test_gpu.py
+
+submission:
+	python src/submission.py --data_path data/
