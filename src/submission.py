@@ -30,9 +30,12 @@ def run_length_enc(label):
 
 
 def submission(args):
-    from data import load_test_data
-    imgs_test, imgs_id_test = load_test_data(args)
-    imgs_test = np.load(os.path.join(args.data_path, 'processed/imgs_mask_test.npy'))
+#   from data import load_test_data
+ #   imgs_test, imgs_id_test = load_test_data(args)
+  #  imgs_test = np.load('../data/processed/test.npy')
+    imgs_id_test = np.load('../data/processed/test_idx.npy')
+    
+    imgs_test = np.load(args.pred)
 
     argsort = np.argsort(imgs_id_test)
     imgs_id_test = imgs_id_test[argsort]
@@ -53,7 +56,9 @@ def submission(args):
             print('{}/{}'.format(i, total))
 
     first_row = 'img,pixels'
-    file_name = os.path.join(args.data_path, 'processed/submission.csv')
+
+    stamp = 'nie'
+    file_name = args.output.format(stamp)
 
     with open(file_name, 'w+') as f:
         f.write(first_row + '\n')
@@ -66,6 +71,11 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_path', type=str, default='../data/',
                         help='path to data folder: raw and processed')
+    
+    parser.add_argument('--pred', type=str, default='../data/results/tmp-res.npy',
+                        help='NN prediction file')
+    parser.add_argument('--output', type=str, default='../data/results/submission_{}.csv',
+                        help='submission file name')
 
     args = parser.parse_args()
     submission(args)

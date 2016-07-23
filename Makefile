@@ -1,7 +1,7 @@
 .PHONY: clean lint docker test prepare
 
 prepare:
-	python src/data.py --data_path data/
+	python src/prepare.py --data_path data/ --prefix= 
 
 clean:
 	find . -name "*.pyc" -exec rm {} \;

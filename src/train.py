@@ -16,16 +16,6 @@ from data import load_train_data, load_test_data
 from keras.callbacks import ModelCheckpoint, LearningRateScheduler
 
 
-def preprocess(imgs, args):
-    imgs_p = np.ndarray((imgs.shape[0], imgs.shape[1],
-                         args.img_height, args.img_width),
-                        dtype=np.uint8)
-    for i in range(imgs.shape[0]):
-        imgs_p[i, 0] = cv2.resize(imgs[i, 0], (args.img_width, args.img_height), 
-                                  interpolation=cv2.INTER_CUBIC)
-    return imgs_p
-
-
 def load_data(kind, args):
     if kind == 'train':
         path = args.train
@@ -58,18 +48,26 @@ def train_and_predict(args):
     print('Loading and preprocessing train data...')
     print('-'*30)
 
-    img_train, mask_train = load_data('train', args)
-    img_val, mask_val = load_data('val', args)
+#    img_train, mask_train = load_data('train', args)
+#    img_val, mask_val = load_data('val', args)
+    img_train = np.load(args.bulk)
+    mask_train = np.load(args.bulk.replace('_img_', '_mask_'))
+
+    img_train = np.load('../data/processed/fold_0/train_img_.npy')
+    mask_train = np.load('../data/processed/fold_0/train_mask_.npy')
+    img_val = np.load('../data/processed/fold_0/val_img_.npy')
+    mask_val = np.load('../data/processed/fold_0/val_mask_.npy')
 
     print('-'*30)
     print('Creating and compiling model...')
     print('-'*30)
 
     model = Model(args)
-    ckpt_best = ModelCheckpoint(os.path.join(args.save_dir, 'ckpt_best.hdf5'),
+    best_path = os.path.join(args.save_dir, 'ckpt_best.hdf5')
+    ckpt_best = ModelCheckpoint(best_path,
                                 monitor='val_loss', save_best_only=True)
-    ckpt = ModelCheckpoint(os.path.join(args.save_dir, 'ckpt.hdf5'),
-                           monitor='val_loss', save_best_only=False)
+#    ckpt = ModelCheckpoint(os.path.join(args.save_dir, 'ckpt.hdf5'),
+#                           monitor='val_loss', save_best_only=False)
 
     print('-'*30)
     print('Fitting model...')
@@ -80,33 +78,23 @@ def train_and_predict(args):
               batch_size=args.batch_size,
               nb_epoch=args.num_epochs,
               verbose=1, shuffle=True,
-              callbacks=[ckpt, ckpt_best])
+              callbacks=[ckpt_best])
 
     print('-'*30)
     print('Loading and preprocessing test data...')
-    print('Not implemented')
     print('-'*30)
-
-    # imgs_test, imgs_id_test = load_test_data(args)
-
-    # imgs_test = preprocess(imgs_test, args)
-
-    # imgs_test = imgs_test.astype('float32')
-    # imgs_test -= mean
-    # imgs_test /= std
-
+    
+    test = np.load(args.test)
     print('-'*30)
     print('Loading saved weights...')
     print('-'*30)
-    # model.load_weights(os.path.join(args.save_dir, 'best_unet.hdf5'))
+    model.load_weights(best_path)
 
     print('-'*30)
     print('Predicting masks on test data...')
     print('-'*30)
-    # imgs_mask_test = model.predict(imgs_test, verbose=1)
-
-    # TODO: rewrite this
-    #  np.save(os.path.join(args.data_path, 'processed/imgs_mask_test.npy'), imgs_mask_test)
+    mask = model.predict(test, verbose=1)
+    np.save(os.path.join(args.data_path, 'results/pred.npy'), mask)
 
 
 def main():
@@ -115,15 +103,6 @@ def main():
                         help='path to data folder: raw and processed')
     parser.add_argument('--save_dir', type=str, default='../models/tmp',
                         help='directory to store checkpointed models')
-    parser.add_argument('--init_from', type=str, default=None,
-                        help="""continue training from saved model at this path. Path must contain files saved by previous training process:
-                'config.pkl'        : configuration;
-                'chars_vocab.pkl'   : vocabulary definitions;
-                'checkpoint'        : paths to model file(s) (created by tf).
-                                      Note: this file contains absolute paths, be careful when moving files around;
-                'model.ckpt-*'      : file(s) with model definition (created by tf)
-                """)
-
     parser.add_argument('--img_width', type=int, default=80,
                         help='image width')
     parser.add_argument('--img_height', type=int, default=64,
@@ -136,14 +115,14 @@ def main():
                         help='number of epochs')
 
     # yes, masks path will be compute in dataloader
-    parser.add_argument('--train', type=str, 
-                        default='../data/processed/tmp-train_0_5_img.npy',
+    parser.add_argument('--bulk', type=str, 
+                        default='../data/processed/train_img_80x64.npy',
                         help='path to bulk of train imgs npy')
     parser.add_argument('--val', type=str,
-                        default='../data/processed/tmp-val_0_5_img.npy',
+                        default='../data/processed/val_0_5_img.npy',
                         help='path to bulk of val imgs npy')
     parser.add_argument('--test', type=str,
-                        default='../data/processed/tmp-test.npy',
+                        default='../data/processed/test_img_80x64.npy',
                         help='path to bulk of test imgs')
     args = parser.parse_args()
     train_and_predict(args)

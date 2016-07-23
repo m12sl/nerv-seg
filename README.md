@@ -39,12 +39,11 @@ Usage:
 Current status:
 
 1. Docker ready for python2, not for python3
-2. Model runnable
-3. Train runnable
+2. Under active development. Be careful with kludges
 
 TODO:
 
-1. Add validation into train procedure
+1. Reread and refactor
 2. Investigate errors
 3. Modify network
 4. Modify preprocessing
