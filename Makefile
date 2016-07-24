@@ -1,7 +1,7 @@
 .PHONY: clean lint docker test prepare
 
 prepare:
-	python src/prepare.py --data_path data/ --prefix= 
+	python src/prepare.py --data-path data/
 
 clean:
 	find . -name "*.pyc" -exec rm {} \;
@@ -16,4 +16,4 @@ test:
 	NV_GPU=0 ./ker.sh python /src/test_gpu.py
 
 submission:
-	python src/submission.py --data_path data/
+	python src/submission.py --data-path data/

@@ -19,18 +19,26 @@ def proc(X, args):
 
     for i in range(X.shape[0]):
         Y[i, 0] = cv2.resize(X[i, 0], (args.width, args.height),
-                               interpolation=cv2.INTER_CUBIC)
+                             interpolation=cv2.INTER_CUBIC)
     return Y
 
 
 def prepare_dataset(args):
     t0 = time()
-#    print('List train set')
-#    train_seq = get_train_sequences(args)
-#    names = np.concatenate(list(train_seq.values()))
     print('Load train images')
-#    img, mask = stack_image_files(names)
     img, mask, idx = prepare_train(args)
+    # img is a stack of training images, (total_images, 1, W, H)
+    # mask is the same stack of masks
+    # idx -- index for image_id -> (subject, number)
+    print('Process and save: bulk train')
+    path = os.path.join(args.data_path, 'common/{}_{}.npy')
+
+    np.save(path.format('train', 'img'), img)
+    np.save(path.format('train', 'mask'), mask)
+    np.save(path.format('train', 'idx'), idx)
+
+    img = proc(img, args)
+    mask = proc(mask, args).astype(np.float32) / 255.0
 
     img = img.astype(np.float32)
     mean = img.mean()
@@ -38,37 +46,31 @@ def prepare_dataset(args):
 
     img -= mean
     img /= std
-    print('Process and save: bulk train')
-    path = os.path.join(args.data_path, 'processed/{}_{}_{}.npy')
 
-    if args.keep_full:
-        np.save(path.format('train', 'img', 'full'), img)
-        np.save(path.format('train', 'mask', 'full'), mask)
-
-    img = proc(img, args)
-    mask = proc(mask, args).astype(np.float32) / 255.0
-    
     size = '{}x{}'.format(args.width, args.height)
-    np.save(path.format('train', 'idx', ''), idx)
+    path = os.path.join(args.data_path, 'processed/{}_{}_{}.npy')
     np.save(path.format('train', 'img', size), img)
     np.save(path.format('train', 'mask', size), mask)
-
     # TODO: add index
     print('Load test images')
     test, test_idx = prepare_test(args)
-    test = test.astype(np.float32)
 
-    test -= mean
-    test /= std
     print('Process and save: test images')
-    if args.keep_full:
-        np.save(path.format('test', 'img', 'full'), test)
+    path = os.path.join(args.data_path, 'common/{}_{}.npy')
+    np.save(path.format('test', 'img'), test)
+    np.save(path.format('test', 'idx'), test_idx)
 
     test = proc(test, args)
+    test = test.astype(np.float32)
+    test -= mean
+    test /= std
+
+    path = os.path.join(args.data_path, 'processed/{}_{}_{}.npy')
     np.save(path.format('test', 'img', size), test)
-    np.save(path.format('test', 'idx', ''), test_idx)
+
     t1 = time()
     print('Done for {:.2f}m'.format((t1 - t0) / 60.0))
+
 
 def get_test_sequence(args):
     root = os.path.join(args.data_path, 'raw/test')
@@ -137,60 +139,17 @@ def prepare_image_and_mask(path):
     return np.array(img), np.array(mask)
 
 
-def build_folds(args):
-    # TODO: (TBD) may be reserve one fold for ensembling?
-    # TODO: if we will try some folding tricks, build only
-    #       one bulk_img/bulk_mask array and move
-    # indexing procedures into fold_i_j_idx.npy
-    # for usage like `fold_i = bulk[fold_i_idx, ...] `
-    train_sequences_dict = get_train_sequences(args)
-
-    keys = list(train_sequences_dict)
-    idx = np.array(keys)
-    np.random.seed(args.seed)
-    np.random.shuffle(idx)
-
-    idx_folds = np.array_split(idx, args.num_folds)
-    fname = os.path.join(args.data_path, 'processed/',
-                         args.prefix + '{}_{}_{}_{}.npy')
-    print('Generate {} folds'.format(args.num_folds))
-
-    for i in range(args.num_folds):
-        val_idx = idx_folds[i]
-        train_idx = np.concatenate(idx_folds[:i] + idx_folds[i + 1:])
-
-        train_files, val_files = [], []
-        [train_files.extend(train_sequences_dict[j]) for j in train_idx]
-        [val_files.extend(train_sequences_dict[j]) for j in val_idx]
-        np.random.shuffle(train_files)
-        np.random.shuffle(val_files)
-
-        print("{}: {} {}".format(i, len(train_files), len(val_files)))
-        imgs, masks = stack_image_files(train_files)
-        np.save(fname.format('train', i, args.num_folds, 'img'), imgs)
-        np.save(fname.format('train', i, args.num_folds, 'mask'), imgs)
-
-        imgs, masks = stack_image_files(val_files)
-        np.save(fname.format('val', i, args.num_folds, 'img'), imgs)
-        np.save(fname.format('val', i, args.num_folds, 'mask'), imgs)
-
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--data-path', type=str, default='../data/',
                         help='path to data folder: raw and processed')
-
-    parser.add_argument('--keep-full', default=False, action='store_true',
-                        help='save full size images')
 
     parser.add_argument('--width', type=int, default=80)
     parser.add_argument('--height', type=int, default=64)
 
     args = parser.parse_args()
     prepare_dataset(args)
-    # TODO: repair fold preparation
-#    prepare_test(args)
-#    build_folds(args)
+
 
 if __name__ == '__main__':
     main()
