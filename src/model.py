@@ -1,5 +1,5 @@
 from keras.models import Model
-from keras.layers import Input, merge, Convolution2D, MaxPooling2D, UpSampling2D
+from keras.layers import Input, merge, Convolution2D, MaxPooling2D, UpSampling2D, AtrousConvolution2D
 from keras.optimizers import Adam
 
 from keras import backend as K
@@ -59,6 +59,29 @@ def UNet(args):
 
     model = Model(input=inputs, output=conv10)
 
+    model.compile(optimizer=Adam(lr=1e-5), loss=dice_coef_loss, metrics=[dice_coef])
+
+    return model
+
+
+def DNet(args):
+    inputs = Input((1, args.img_height, args.img_width))
+    conv1 = Convolution2D(32, 3, 3, activation='relu', border_mode='same')(inputs)
+    conv1 = Convolution2D(32, 3, 3, activation='relu', border_mode='same')(conv1)
+
+    conv2 = AtrousConvolution2D(64, 3, 3, atrous_rate=(2, 2), activation='relu', border_mode='same')(conv1)
+    conv2 = AtrousConvolution2D(64, 3, 3, atrous_rate=(4, 4), activation='relu', border_mode='same')(conv2)
+
+    conv3 = AtrousConvolution2D(64, 3, 3, atrous_rate=(8, 8), activation='relu', border_mode='same')(conv2)
+    conv3 = AtrousConvolution2D(64, 3, 3, atrous_rate=(16, 16), activation='relu', border_mode='same')(conv3)
+
+    merge4 = merge([conv3, conv2, conv1], mode='concat', concat_axis=1)
+    conv5 = Convolution2D(32, 3, 3, activation='relu', border_mode='same')(merge4)
+    conv5 = Convolution2D(32, 3, 3, activation='relu', border_mode='same')(conv5)
+
+    conv6 = Convolution2D(1, 1, 1, activation='sigmoid')(conv5)
+
+    model = Model(input=inputs, output=conv6)
     model.compile(optimizer=Adam(lr=1e-5), loss=dice_coef_loss, metrics=[dice_coef])
 
     return model
