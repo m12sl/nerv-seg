@@ -23,6 +23,22 @@ def proc(X, args):
     return Y
 
 
+def build_kfolds(args, idx):
+    subjects = sorted(set(idx[:, 0]))
+    subj_index = np.array(subjects)
+
+    np.random.seed(2041)
+    np.random.shuffle(subj_index)
+
+    folds = np.array_split(subj_index, args.folds)
+    path = os.path.join(args.data_path, 'processed/sna_{}_{}.npy')
+    for i, j in enumerate(folds):
+        val = j
+        train = folds[:j] + folds[j + 1:]
+        np.save()
+
+
+
 def prepare_dataset(args):
     t0 = time()
     print('Load train images')
@@ -36,6 +52,8 @@ def prepare_dataset(args):
     np.save(path.format('train', 'img'), img)
     np.save(path.format('train', 'mask'), mask)
     np.save(path.format('train', 'idx'), idx)
+
+    build_kfolds(args, idx)
 
     img = proc(img, args)
     mask = proc(mask, args).astype(np.float32) / 255.0
