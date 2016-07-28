@@ -57,12 +57,12 @@ def UNet(args):
     conv9 = Convolution2D(32, 3, 3, activation='relu', border_mode='same')(conv9)
 
     conv10 = Convolution2D(1, 1, 1)(conv9)
-    dropout = Dropout(0.5)(conv10)
+    dropout = Dropout(0.1)(conv10)
     output = Activation('sigmoid')(dropout)
 
     model = Model(input=inputs, output=output)
 
-    model.compile(optimizer=Adam(lr=1e-5), loss=dice_coef_loss, metrics=[dice_coef])
+    model.compile(optimizer=Adam(lr=1e-4), loss=dice_coef_loss, metrics=[dice_coef])
 
     return model
 
