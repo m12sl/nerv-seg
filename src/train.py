@@ -64,7 +64,7 @@ def train(args):
     print('Save model structure data...')
     json_string = model.to_json()
     path = os.path.join(args.save_dir, 'model.json')
-    with open(path, 'wb') as fout:
+    with open(path, 'w') as fout:
         fout.write(json_string)
 
     model.load_weights(best_path)
