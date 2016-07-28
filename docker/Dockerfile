@@ -3,7 +3,10 @@ FROM nvidia/cuda:7.5-cudnn4-devel
 
 MAINTAINER Alex Ozerin <m12sl@yandex.ru>
 
-# Pick up some TF dependencies
+ARG THEANO_VERSION=rel-0.8.2
+ARG KERAS_VERSION=1.0.6
+
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
         software-properties-common \
         build-essential \
@@ -14,19 +17,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libpng12-dev \
         libzmq3-dev \
         pkg-config \
-        python \
-        python-dev \
-        python-numpy \
-        python-pip \
-        python-scipy \
         rsync \
         unzip \
-        python3 \
-        python3-dev \
-        python3-numpy \
-        python3-scipy \
-        python3-pip \
-        swig \
+        libhdf5-dev \
         zip \
         zlib1g-dev \
         libhdf5-dev \
@@ -35,26 +28,22 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         gfortran \
         libopenblas-dev \
         liblapack-dev \
-        libhdf5-dev \
         libjpeg-dev \
         libopencv-dev \
         vim \
+        python3 \
+        python3-dev \
+        python3-numpy \
+        python3-scipy \
+        python3-pip \
+        python3-h5py \
+        python3-yaml \
+        swig \
         && \
     apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+    rm -rf /var/lib/apt/lists/* && \
+    update-alternatives --set libblas.so.3 /usr/lib/openblas-base/libblas.so.3
 
-RUN curl -O https://bootstrap.pypa.io/get-pip.py && \
-    python get-pip.py && \
-    rm get-pip.py
-
-RUN pip --no-cache-dir install \
-        tqdm \
-        click \
-        ipykernel \
-        jupyter \
-        matplotlib \
-        && \
-    python -m ipykernel.kernelspec
 
 RUN pip3 install --pre \
         tqdm \
@@ -67,44 +56,14 @@ RUN pip3 install --pre \
     python3 -m ipykernel.kernelspec
 
 
-# Install dependencies
-RUN apt-get update && apt-get install -y \
-  libhdf5-dev \
-  python-h5py \
-  python-yaml \
-  python3-h5py \
-  python3-yaml
-
-
 # Upgrade six
-RUN pip install --upgrade six
+ENV CUDA_ROOT /usr/local/cuda
+ENV THEANO_FLAGS "floatX=float32,device=gpu,optimizer_including=cudnn,nvcc.fastmath=True,blas.ldflags='-L/usr/lib/openblas-base -lopenblas'"
+RUN pip3 install git+git://github.com/Theano/Theano.git@${THEANO_VERSION}
 
-RUN pip install --upgrade --no-deps git+git://github.com/Theano/Theano.git
-RUN pip3 install --upgrade --no-deps git+git://github.com/Theano/Theano.git
-
-
-# Clone Keras repo and move into it
-RUN cd /root && git clone https://github.com/fchollet/keras.git && cd keras && \
-  # Install
-  python setup.py install && \
-  python3 setup.py install
-
-RUN apt install -y python-opencv
+RUN pip3 install git+git://github.com/fchollet/keras.git@${KERAS_VERSION}
 
 # Mount volumes for actual
 VOLUME ["/src", "/data", "/models"]
-
-# Use Theano with GPU
-ENV CUDA_ROOT /usr/local/cuda
-
-RUN echo "[global]\n\
-device = gpu\n\
-floatX = float32\n\
-base_compiledir = /models/.theano\n\
-compiledir = /models/.theano\n\
-[nvcc]\n\
-optimizer_include = cudnn\n\
-fastmath = True\n\
-" > ~/.theanorc
 
 WORKDIR /
