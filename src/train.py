@@ -97,7 +97,7 @@ def main():
                         help='image width')
     parser.add_argument('--img_height', type=int, default=64,
                         help='image height')
-    parser.add_argument('--batch_size', type=int, default=128,
+    parser.add_argument('--batch_size', type=int, default=64,
                         help='minibatch size')
     parser.add_argument('--num_epochs', type=int, default=10,
                         help='number of epochs')
