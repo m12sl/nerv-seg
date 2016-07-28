@@ -1,0 +1,9 @@
+NV_GPU=0 ./ker.sh python3 /src/train.py --save_dir ../models/unet-bn-0 --fold 0
+NV_GPU=0 ./ker.sh python3 /src/train.py --save_dir ../models/unet-bn-1 --fold 1
+NV_GPU=0 ./ker.sh python3 /src/train.py --save_dir ../models/unet-bn-2 --fold 2
+NV_GPU=0 ./ker.sh python3 /src/train.py --save_dir ../models/unet-bn-3 --fold 3
+NV_GPU=0 ./ker.sh python3 /src/train.py --save_dir ../models/unet-bn-4 --fold 4
+NV_GPU=0 ./ker.sh python3 /src/train.py --save_dir ../models/unet-bn-5 --fold 5
+NV_GPU=0 ./ker.sh python3 /src/train.py --save_dir ../models/unet-bn-6 --fold 6
+NV_GPU=0 ./ker.sh python3 /src/train.py --save_dir ../models/unet-bn-7 --fold 7
+NV_GPU=0 ./ker.sh python3 /src/train.py --save_dir ../models/unet-bn-8 --fold 8

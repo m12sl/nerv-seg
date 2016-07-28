@@ -5,16 +5,13 @@ import numpy as np
 import argparse
 import os
 import errno
-import pickle
 import json
-from tqdm import tqdm
 
 from model import UNet, DNet
-from keras.callbacks import ModelCheckpoint, LearningRateScheduler
+from keras.callbacks import ModelCheckpoint
 
 
-def train(args):
-    path = args.save_dir
+def maybe_mkdir(path):
     try:
         os.makedirs(path)
     except OSError as exc:
@@ -22,6 +19,15 @@ def train(args):
             pass
         else:
             raise
+
+
+def train(args):
+    maybe_mkdir(args.save_dir)
+    with open(os.path.join(args.save_dir, 'args.json'), 'w') as fout:
+        json.dump(args.__dict__, fout)
+
+    maybe_mkdir(args.res)
+    args.res = args.res + 'fold-{}'.format(args.fold)
 
     print('-'*30)
     print('Loading and preprocessing train data...')
@@ -70,10 +76,15 @@ def train(args):
     model.load_weights(best_path)
 
     print('-'*30)
-    print('Predicting masks on test data...')
+    print('Predicting masks on all data')
+    # lets predicts the whole train (train, val, test) + test
+
+    mask_train = model.predict(img, verbose=1)
+    np.save(args.res + 'train.npy', mask_train)
+
     test = np.load(args.test)
     mask = model.predict(test, verbose=1)
-    np.save(os.path.join(args.data_path, 'results/pred.npy'), mask)
+    np.save(args.res + 'test.npy', mask)
 
 
 def main():
@@ -91,19 +102,28 @@ def main():
     parser.add_argument('--num_epochs', type=int, default=10,
                         help='number of epochs')
     # yes, masks path will be compute in dataloader
+    parser.add_argument('--fold', type=int, default=0,
+                        help='number of fold to train')
     parser.add_argument('--bulk', type=str, 
                         default='../data/processed/train_img_80x64.npy',
                         help='path to bulk of train imgs npy')
     parser.add_argument('--test', type=str,
                         default='../data/processed/test_img_80x64.npy')
-    parser.add_argument('--index', type=str,
-                        default='../data/processed/folds/train-0.npy',
-                        help='path to bulk of val imgs npy')
-    parser.add_argument('--val_index', type=str,
-                        default='../data/processed/folds/val-0.npy')
+    # parser.add_argument('--index', type=str,
+    #                     default='../data/processed/folds/train-{}.npy',
+    #                     help='path to bulk of val imgs npy')
+    # parser.add_argument('--val_index', type=str,
+    #                     default='../data/processed/folds/val-{}.npy')
     parser.add_argument('--model', type=str,
                         default='unet')
+    parser.add_argument('--res', type=str,
+                        default='../data/predict-0/')
     args = parser.parse_args()
+
+    assert args.fold in range(0, 9), "Wrong fold specified"
+    args.index = '../data/processed/folds/train-{}.npy'.format(args.fold)
+    args.val_index = '../data/processed/folds/val-{}.npy'.format(args.fold)
+
     train(args)
 
 
