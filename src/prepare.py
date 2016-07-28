@@ -5,6 +5,7 @@ import numpy as np
 import argparse
 from tqdm import tqdm
 from time import time
+import json
 
 import cv2
 
@@ -24,19 +25,26 @@ def proc(X, args):
 
 
 def build_kfolds(args, idx):
-    subjects = sorted(set(idx[:, 0]))
-    subj_index = np.array(subjects)
+    def f(indices):
+        ret = []
+        for i in indices:
+            ret.extend(idx[i])
+        return ret
 
-    np.random.seed(2041)
-    np.random.shuffle(subj_index)
+    subjects = np.array(sorted(set(idx.keys())))
+    np.random.seed(args.seed)
+    np.random.shuffle(subjects)
+    folds = np.array_split(subjects, args.folds)
 
-    folds = np.array_split(subj_index, args.folds)
-    path = os.path.join(args.data_path, 'processed/sna_{}_{}.npy')
-    for i, j in enumerate(folds):
-        val = j
-        train = folds[:j] + folds[j + 1:]
-        np.save()
+    test = folds[-1]
+    path = os.path.join(args.data_path, 'processed/folds/{}{}')
+    np.save(path.format('test', ''), f(test))
+    for i, subj in enumerate(folds[:-1]):
+        val = folds[i]
+        train = np.concatenate(folds[:i] + folds[i + 1: -1])
 
+        np.save(path.format('val-', i), f(val))
+        np.save(path.format('train-', i), f(train))
 
 
 def prepare_dataset(args):
@@ -45,14 +53,16 @@ def prepare_dataset(args):
     img, mask, idx = prepare_train(args)
     # img is a stack of training images, (total_images, 1, W, H)
     # mask is the same stack of masks
-    # idx -- index for image_id -> (subject, number)
+    # idx --- {subject:[id, ..., id]}
     print('Process and save: bulk train')
-    path = os.path.join(args.data_path, 'common/{}_{}.npy')
+    path = os.path.join(args.data_path, 'common/{}_{}')
 
     np.save(path.format('train', 'img'), img)
     np.save(path.format('train', 'mask'), mask)
-    np.save(path.format('train', 'idx'), idx)
+    with open(path.format('train', 'idx.json'), 'w') as fout:
+        json.dump(idx, fout)
 
+    print('Generate folds')
     build_kfolds(args, idx)
 
     img = proc(img, args)
@@ -135,18 +145,17 @@ def prepare_train(args):
 
     imgs = np.ndarray((total, 1, image_rows, image_cols), dtype=np.uint8)
     masks = np.ndarray((total, 1, image_rows, image_cols), dtype=np.uint8)
-    idx = np.zeros((total, 2))
-    
     counter = 0
-    
+    idx = {}
     for subj, line in ret.items():
+        tmp = []
         for i, fname in line:
             img, mask = prepare_image_and_mask(fname)
             imgs[counter, 0, ...] = img
             masks[counter, 0, ...] = mask
-            idx[counter, :] = [subj, i]
+            tmp.append(counter)
             counter += 1
-
+        idx[subj] = tmp
     return imgs, masks, idx
 
 
@@ -164,6 +173,8 @@ def main():
 
     parser.add_argument('--width', type=int, default=80)
     parser.add_argument('--height', type=int, default=64)
+    parser.add_argument('--seed', type=int, default=2016)
+    parser.add_argument('--folds', type=int, default=10)
 
     args = parser.parse_args()
     prepare_dataset(args)

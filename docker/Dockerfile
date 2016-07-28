@@ -71,7 +71,10 @@ RUN pip3 install --pre \
 RUN apt-get update && apt-get install -y \
   libhdf5-dev \
   python-h5py \
-  python-yaml
+  python-yaml \
+  python3-h5py \
+  python3-yaml
+
 
 # Upgrade six
 RUN pip install --upgrade six
@@ -96,6 +99,12 @@ ENV CUDA_ROOT /usr/local/cuda
 
 RUN echo "[global]\n\
 device = gpu\n\
-floatX = float32\n" > ~/.theanorc
+floatX = float32\n\
+base_compiledir = /models/.theano\n\
+compiledir = /models/.theano\n\
+[nvcc]\n\
+optimizer_include = cudnn\n\
+fastmath = True\n\
+" > ~/.theanorc
 
 WORKDIR /
