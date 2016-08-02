@@ -9,6 +9,7 @@ import json
 
 from model import UNet, DNet
 from keras.callbacks import ModelCheckpoint
+from keras.preprocessing.image import ImageDataGenerator
 
 
 def maybe_mkdir(path):
@@ -51,14 +52,38 @@ def train(args):
     best_path = os.path.join(args.save_dir, 'ckpt-best.hdf5')
     ckpt_best = ModelCheckpoint(best_path,
                                 monitor='val_loss', save_best_only=True)
+
+    print('-'*30)
+    print('Fitting data generators...')
+
+    datagen = ImageDataGenerator(featurewise_center=True,
+                                 featurewise_std_normalization=True,
+                                 rotation_range=5,
+                                 vertical_flip=True,
+                                 horizontal_flip=True)
+    datagen.fit(img_train)
+
     print('-'*30)
     print('Fitting model...')
+
+    history = model.fit_generator(datagen.flow(img_train, 
+                                               mask_train, 
+                                               batch_size=args.batch_size,
+                                               shuffle=True),
+                                  samples_per_epoch=len(train_index), 
+                                  validation_data=(img_val, mask_val),
+                                  verbose=2,
+                                  nb_worker=args.num_workers,
+                                  nb_epoch=args.num_epochs,
+                                  callbacks=[ckpt_best])
+    '''
     history = model.fit(img_train, mask_train,
                         validation_data=(img_val, mask_val),
                         batch_size=args.batch_size,
                         nb_epoch=args.num_epochs,
                         verbose=1, shuffle=True,
                         callbacks=[ckpt_best])
+    '''
 
     print('Save history')
     path = os.path.join(args.save_dir, 'history.json')
@@ -97,10 +122,12 @@ def main():
                         help='image width')
     parser.add_argument('--img_height', type=int, default=64,
                         help='image height')
-    parser.add_argument('--batch_size', type=int, default=128,
+    parser.add_argument('--batch_size', type=int, default=64,
                         help='minibatch size')
     parser.add_argument('--num_epochs', type=int, default=10,
                         help='number of epochs')
+    parser.add_argument('--num_workers', type=int, default=3,
+                        help='number of workers during model fit')
     # yes, masks path will be compute in dataloader
     parser.add_argument('--fold', type=int, default=0,
                         help='number of fold to train')
