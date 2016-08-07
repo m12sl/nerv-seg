@@ -7,7 +7,8 @@ ARG THEANO_VERSION=rel-0.8.2
 ARG KERAS_VERSION=1.0.6
 
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get autoclean && apt-get update && apt-get upgrade -y 
+RUN apt-get install -y --no-install-recommends \
         software-properties-common \
         build-essential \
         curl \
@@ -47,6 +48,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 RUN pip3 install --pre \
         tqdm \
+        'numpy==1.11.0' \
         click \
         ipykernel \
         jupyter \
