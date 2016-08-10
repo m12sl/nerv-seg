@@ -9,7 +9,7 @@ import json
 
 from model import UNet, DNet
 from keras.callbacks import ModelCheckpoint
-from keras.preprocessing.image import ImageDataGenerator
+from data_generator import ImageDataGenerator
 
 
 def maybe_mkdir(path):
