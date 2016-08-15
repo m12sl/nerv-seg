@@ -49,6 +49,7 @@ RUN apt-get install -y --no-install-recommends \
 RUN pip3 install --pre \
         tqdm \
         'numpy==1.11.0' \
+        pillow \
         click \
         ipykernel \
         jupyter \

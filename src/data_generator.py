@@ -12,6 +12,9 @@ import scipy.ndimage as ndi
 from six.moves import range
 import os
 import threading
+import cv2
+import time
+from scipy.ndimage.interpolation import map_coordinates
 
 
 def random_rotation(x, rg, row_index=1, col_index=2, channel_index=0,
@@ -116,6 +119,54 @@ def flip_axis(x, axis):
     return x
 
 
+def elastic_transform(X, y=None, alpha=None, sigma=None, alpha_affine=None, random_state=None):
+#    print("In elastic transformation")
+    # Works 0.8-0.15 seconds on a single image
+    X = X[0, :, :]
+    y = y[0, :, :]
+    alpha = X.shape[1] * 2 if alpha is None else alpha
+    sigma = X.shape[1] * 0.08 if sigma is None else sigma
+    alpha_affine = X.shape[1] * 0.08 if alpha_affine is None else alpha_affine
+    random_state = np.random.RandomState(None) if random_state is None else random_state
+
+    shape_size = X.shape
+#    print("shape_size = ", shape_size)
+    
+    # Random affine
+    center_square = np.float32(shape_size) // 2
+    square_size = min(shape_size) // 3
+    pts1 = np.float32([center_square + square_size, \
+                       [center_square[0] + square_size, center_square[1] - square_size], \
+                       center_square - square_size])
+    pts2 = pts1 + random_state.uniform(-alpha_affine, alpha_affine, size=pts1.shape)\
+                                      .astype(np.float32)
+    M = cv2.getAffineTransform(pts1, pts2)
+    X = cv2.warpAffine(X, M, shape_size[::-1], borderMode=cv2.BORDER_REFLECT_101)
+    if y is not None:
+        y = cv2.warpAffine(y, M, shape_size[::-1], borderMode=cv2.BORDER_REFLECT_101)
+
+    # Elastic
+    blur_size = int(4*sigma) | 1
+    dx = cv2.GaussianBlur((random_state.rand(*shape_size) * 2 - 1), \
+                          ksize=(blur_size, blur_size), sigmaX=sigma) * alpha
+    dy = cv2.GaussianBlur((random_state.rand(*shape_size) * 2 - 1), \
+                          ksize=(blur_size, blur_size), sigmaX=sigma) * alpha
+
+    xx, yy = np.meshgrid(np.arange(shape_size[1]), np.arange(shape_size[0]))
+    xx = np.reshape(xx + dx, (-1, 1)).astype('float32')
+    yy = np.reshape(yy + dy, (-1, 1)).astype('float32')
+
+    if y is not None:
+        return (cv2.remap(X, xx, yy, \
+                          interpolation=cv2.INTER_LINEAR, \
+                          borderMode=cv2.BORDER_REFLECT).reshape(shape_size)[np.newaxis],
+                cv2.remap(y, xx, yy, \
+                          interpolation=cv2.INTER_LINEAR, \
+                          borderMode=cv2.BORDER_REFLECT).reshape(shape_size)[np.newaxis])
+    return cv2.remap(X, xx, yy, interpolation=cv2.INTER_LINEAR, \
+                    borderMode=cv2.BORDER_REFLECT).reshape(shape)[np.newaxis]
+
+
 def array_to_img(x, dim_ordering='th', scale=True):
     from PIL import Image
     if dim_ordering == 'th':
@@ -193,6 +244,7 @@ class ImageDataGenerator(object):
             'constant'. Default is 0.
         horizontal_flip: whether to randomly flip images horizontally.
         vertical_flip: whether to randomly flip images vertically.
+        elastic_transform: whether to perform elastic transformations.
         rescale: rescaling factor. If None or 0, no rescaling is applied,
             otherwise we multiply the data by the value provided (before applying
             any other transformation).
@@ -217,6 +269,7 @@ class ImageDataGenerator(object):
                  cval=0.,
                  horizontal_flip=False,
                  vertical_flip=False,
+                 elastic_transform=False,
                  rescale=None,
                  dim_ordering='th'):
         self.__dict__.update(locals())
@@ -331,6 +384,19 @@ class ImageDataGenerator(object):
             y = apply_transform(y, transform_matrix, img_channel_index,
                                 fill_mode=self.fill_mode, cval=self.cval)
 
+        if self.elastic_transform:
+            if y is not None:
+                x, y = elastic_transform(X=x, \
+                                         y=y, \
+                                         alpha=x.shape[1] * 2, \
+                                         sigma=x.shape[1] * 0.08, \
+                                         alpha_affine=x.shape[1] * 0.08)
+            else:
+                x = elastic_transform(X=x, \
+                                      alpha=x.shape[1] * 2, \
+                                      sigma=x.shape[1] * 0.08, \
+                                      alpha_affine=x.shape[1] * 0.08)
+
         if self.horizontal_flip:
             if np.random.random() < 0.5:
                 x = flip_axis(x, img_col_index)
@@ -346,6 +412,7 @@ class ImageDataGenerator(object):
         # TODO:
         # channel-wise normalization
         # barrel/fisheye
+#        print("Return from random transform")
         if y is not None:
             return x, y
         return x
@@ -462,6 +529,8 @@ class NumpyArrayIterator(Iterator):
         batch_x = np.zeros(tuple([current_batch_size] + list(self.X.shape)[1:]))
         if self.y is not None:
             batch_y = np.zeros(tuple([current_batch_size] + list(self.y.shape)[1:]))
+#            print("Starting batch transformation.")
+            starttime = time.time()
             for i, j in enumerate(index_array):
                 x, yy = self.X[j], self.y[j]
                 x, yy = self.image_data_generator.random_transform(x.astype('float32'),
@@ -469,6 +538,7 @@ class NumpyArrayIterator(Iterator):
                 x = self.image_data_generator.standardize(x)
                 batch_x[i] = x
                 batch_y[i] = yy
+#            print("Transformation processed in {} sec.".format(time.time() - starttime))
         else:
             for i, j in enumerate(index_array):
                 x = self.X[j]

@@ -56,26 +56,41 @@ def train(args):
     print('-'*30)
     print('Fitting data generators...')
 
-    datagen = ImageDataGenerator(featurewise_center=True,
-                                 featurewise_std_normalization=True,
-                                 rotation_range=5,
+    datagen = ImageDataGenerator(rotation_range=5,
                                  vertical_flip=True,
-                                 horizontal_flip=True)
+                                 horizontal_flip=True,
+                                 elastic_transform=False)
     datagen.fit(img_train)
 
     print('-'*30)
     print('Fitting model...')
-
     history = model.fit_generator(datagen.flow(img_train, 
                                                mask_train, 
                                                batch_size=args.batch_size,
-                                               shuffle=True),
+                                               shuffle=True,
+                                               save_to_dir="../data/augmented/"),
                                   samples_per_epoch=len(train_index), 
                                   validation_data=(img_val, mask_val),
                                   verbose=2,
                                   nb_worker=args.num_workers,
                                   nb_epoch=args.num_epochs,
-                                  callbacks=[ckpt_best])
+                                  callbacks=[ckpt_best],
+                                  pickle_safe=False)
+    '''
+    history = dict(train_loss=[])
+    for e in range(args.num_epochs):
+        print('Epoch', e)
+        batches = 0
+        for X_batch, Y_batch in datagen.flow(img_train, mask_train, batch_size=args.batch_size,
+                                             shuffle=True):
+            train_loss = model.train_on_batch(X_batch, Y_batch)
+            history["train_loss"].append(train_loss)
+            print("Finished training on a batch")
+            batches += 1
+            if batches >= len(train_index) / args.batch_size:
+                break
+    '''
+
     '''
     history = model.fit(img_train, mask_train,
                         validation_data=(img_val, mask_val),
@@ -126,7 +141,7 @@ def main():
                         help='minibatch size')
     parser.add_argument('--num_epochs', type=int, default=10,
                         help='number of epochs')
-    parser.add_argument('--num_workers', type=int, default=3,
+    parser.add_argument('--num_workers', type=int, default=8,
                         help='number of workers during model fit')
     # yes, masks path will be compute in dataloader
     parser.add_argument('--fold', type=int, default=0,
