@@ -9,7 +9,7 @@ import json
 
 from model import UNet, DNet
 from keras.callbacks import ModelCheckpoint
-from data_generator import ImageDataGenerator
+from generator import MyGenerator
 
 
 def maybe_mkdir(path):
@@ -31,19 +31,6 @@ def train(args):
     args.res = args.res + 'fold-{}'.format(args.fold)
 
     print('-'*30)
-    print('Loading and preprocessing train data...')
-    img = np.load(args.bulk)
-    mask = np.load(args.bulk.replace('_img_', '_mask_'))
-
-    train_index = np.load(args.index)
-    val_index = np.load(args.val_index)
-
-    img_train = img[train_index, ...]
-    mask_train = mask[train_index, ...]
-    img_val = img[val_index, ...]
-    mask_val = mask[val_index, ...]
-
-    print('-'*30)
     print('Creating and compiling model...')
     if args.model == 'dnet':
         model = DNet(args)
@@ -54,42 +41,38 @@ def train(args):
                                 monitor='val_loss', save_best_only=True)
 
     print('-'*30)
-    print('Fitting data generators...')
+    print('Loading and preprocessing train data...')
+    img = np.load(args.bulk)
+    mask = np.load(args.bulk.replace('_img_', '_mask_'))
 
-    datagen = ImageDataGenerator(rotation_range=5,
-                                 vertical_flip=True,
-                                 horizontal_flip=True,
-                                 elastic_transform=False)
-    datagen.fit(img_train)
+    train_index = np.load(args.index)
+    val_index = np.load(args.val_index)
+    
+    img_train = img[train_index, ...]
+    img_val = img[val_index, ...]
+    mask_train = mask[train_index, ...]
+    mask_val = mask[val_index, ...]
+    print("Train shape:", img_train.shape, ", valid shape: ", img_val.shape)
+
+    datagen_train = MyGenerator(horizontal_flip_prob=0.5, 
+                                vertical_flip_prob=0.5, 
+                                elastic_alpha=2, 
+                                elastic_sigma=0.08, 
+                                affine_alpha=0.08)
 
     print('-'*30)
     print('Fitting model...')
-    history = model.fit_generator(datagen.flow(img_train, 
-                                               mask_train, 
-                                               batch_size=args.batch_size,
-                                               shuffle=True,
-                                               save_to_dir="../data/augmented/"),
-                                  samples_per_epoch=len(train_index), 
+    history = model.fit_generator(datagen_train.flow(img_train,
+                                                     mask_train,
+                                                     batch_size=args.batch_size,
+                                                     shuffle=True),
+                                  samples_per_epoch=len(img_train), 
                                   validation_data=(img_val, mask_val),
                                   verbose=2,
-                                  nb_worker=args.num_workers,
+                                  nb_worker=1,
                                   nb_epoch=args.num_epochs,
                                   callbacks=[ckpt_best],
                                   pickle_safe=False)
-    '''
-    history = dict(train_loss=[])
-    for e in range(args.num_epochs):
-        print('Epoch', e)
-        batches = 0
-        for X_batch, Y_batch in datagen.flow(img_train, mask_train, batch_size=args.batch_size,
-                                             shuffle=True):
-            train_loss = model.train_on_batch(X_batch, Y_batch)
-            history["train_loss"].append(train_loss)
-            print("Finished training on a batch")
-            batches += 1
-            if batches >= len(train_index) / args.batch_size:
-                break
-    '''
 
     '''
     history = model.fit(img_train, mask_train,
