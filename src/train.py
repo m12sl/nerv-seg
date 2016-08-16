@@ -9,6 +9,7 @@ import json
 
 from model import UNet, DNet
 from keras.callbacks import ModelCheckpoint
+from generator import MyGenerator
 
 
 def maybe_mkdir(path):
@@ -30,19 +31,6 @@ def train(args):
     args.res = args.res + 'fold-{}'.format(args.fold)
 
     print('-'*30)
-    print('Loading and preprocessing train data...')
-    img = np.load(args.bulk)
-    mask = np.load(args.bulk.replace('_img_', '_mask_'))
-
-    train_index = np.load(args.index)
-    val_index = np.load(args.val_index)
-
-    img_train = img[train_index, ...]
-    mask_train = mask[train_index, ...]
-    img_val = img[val_index, ...]
-    mask_val = mask[val_index, ...]
-
-    print('-'*30)
     print('Creating and compiling model...')
     if args.model == 'dnet':
         model = DNet(args)
@@ -51,14 +39,49 @@ def train(args):
     best_path = os.path.join(args.save_dir, 'ckpt-best.hdf5')
     ckpt_best = ModelCheckpoint(best_path,
                                 monitor='val_loss', save_best_only=True)
+
+    print('-'*30)
+    print('Loading and preprocessing train data...')
+    img = np.load(args.bulk)
+    mask = np.load(args.bulk.replace('_img_', '_mask_'))
+
+    train_index = np.load(args.index)
+    val_index = np.load(args.val_index)
+    
+    img_train = img[train_index, ...]
+    img_val = img[val_index, ...]
+    mask_train = mask[train_index, ...]
+    mask_val = mask[val_index, ...]
+    print("Train shape:", img_train.shape, ", valid shape: ", img_val.shape)
+
+    datagen_train = MyGenerator(horizontal_flip_prob=0.5, 
+                                vertical_flip_prob=0.5, 
+                                elastic_alpha=2, 
+                                elastic_sigma=0.08, 
+                                affine_alpha=0.08)
+
     print('-'*30)
     print('Fitting model...')
+    history = model.fit_generator(datagen_train.flow(img_train,
+                                                     mask_train,
+                                                     batch_size=args.batch_size,
+                                                     shuffle=True),
+                                  samples_per_epoch=len(img_train), 
+                                  validation_data=(img_val, mask_val),
+                                  verbose=2,
+                                  nb_worker=1,
+                                  nb_epoch=args.num_epochs,
+                                  callbacks=[ckpt_best],
+                                  pickle_safe=False)
+
+    '''
     history = model.fit(img_train, mask_train,
                         validation_data=(img_val, mask_val),
                         batch_size=args.batch_size,
                         nb_epoch=args.num_epochs,
                         verbose=1, shuffle=True,
                         callbacks=[ckpt_best])
+    '''
 
     print('Save history')
     path = os.path.join(args.save_dir, 'history.json')
@@ -101,6 +124,8 @@ def main():
                         help='minibatch size')
     parser.add_argument('--num_epochs', type=int, default=10,
                         help='number of epochs')
+    parser.add_argument('--num_workers', type=int, default=8,
+                        help='number of workers during model fit')
     # yes, masks path will be compute in dataloader
     parser.add_argument('--fold', type=int, default=0,
                         help='number of fold to train')
