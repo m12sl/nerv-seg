@@ -1,7 +1,9 @@
 from keras.models import Model
-from keras.layers import Input, merge, Convolution2D, MaxPooling2D, UpSampling2D
+from keras.layers import Input, merge, Convolution2D, MaxPooling2D, UpSampling2D, ZeroPadding2D
 from keras.layers import AtrousConvolution2D, Activation, Dropout, BatchNormalization
 from keras.optimizers import Adam
+
+from balancing import BROWS, BCOLS
 
 from keras import backend as K
 
@@ -20,7 +22,7 @@ def dice_coef_loss(y_true, y_pred):
 
 
 def UNet(args):
-    inputs = Input((1, args.img_height, args.img_width))
+    inputs = Input((1, BROWS, BCOLS))
     conv1 = Convolution2D(32, 3, 3, border_mode='same', init='he_normal')(inputs)
     conv1 = BatchNormalization()(conv1)
     conv1 = Activation('relu')(conv1)
@@ -60,7 +62,10 @@ def UNet(args):
     conv5 = BatchNormalization()(conv5)
     conv5 = Activation('relu')(conv5)
 
-    up6 = merge([UpSampling2D(size=(2, 2))(conv5), conv4], mode='concat', concat_axis=1)
+
+    up5 = UpSampling2D(size=(2, 2))(conv5)
+
+    up6 = merge([up5, conv4], mode='concat', concat_axis=1)
     conv6 = Convolution2D(256, 3, 3, border_mode='same', init='he_normal')(up6)
     conv6 = BatchNormalization()(conv6)
     conv6 = Activation('relu')(conv6)
@@ -98,7 +103,7 @@ def UNet(args):
 
     model = Model(input=inputs, output=output)
 
-    model.compile(optimizer=Adam(lr=1e-4), loss=dice_coef_loss, metrics=[dice_coef])
+    model.compile(optimizer=Adam(lr=1e-4), loss='binary_crossentropy', metrics=['accuracy'])
 
     return model
 

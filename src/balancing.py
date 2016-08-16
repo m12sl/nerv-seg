@@ -2,18 +2,27 @@
 # only nice marked: from 30 to 90 masks in set
 # stratified by subjects and random
 import numpy as np
+from skimage.io import imread
+from skimage.transform import resize
+from tqdm import tqdm
+import multiprocessing as mp
+import gc
+
+ROWS = 420
+COLS = 580
+
+BROWS = 128
+BCOLS = 160
 
 
 def check_mask(path):
-    from skimage.io import imread
-    img = imread(path)
+    img = imread(path[:-4] + '_mask.tif')
     return np.sum(img) > 0
 
 
 def get_mask_statistics(path='../data/raw/train/'):
     import os
     import re
-    from tqdm import tqdm
     files = os.listdir(path)
     data = {}
     for f in files:
@@ -30,7 +39,7 @@ def get_mask_statistics(path='../data/raw/train/'):
     tasks = []
     for subj in data.keys():
         for x in data[subj]:
-            name = x[1][:-4] + '_mask.tif'
+            name = x[1]
             tasks.append((subj, x[0], name))
 
     print(len(tasks))
@@ -105,7 +114,100 @@ def random_stratified(table, seed=19231, with_unmasked=True):
     return train_list, val_list
 
 
+def test_files(path='../data/raw/test/'):
+    import os
+    import re
+    files = os.listdir(path)
+    test_list = []
+    for f in files:
+        r = re.match('(\d+).tif', f)
+        if r:
+            no = int(r.group(1))
+            test_list.append((no, os.path.join(path, f)))
+    test_list.sort(key=lambda t: t[0])
+
+    return [t[1] for t in test_list]
+
+
+
+def func(task):
+    no = task[0]
+    im = resize(imread(task[1][0]), (BROWS, BCOLS)).astype(np.float32)
+    mask = resize(imread(task[1][1]), (BROWS, BCOLS)) > 0.5
+    return (no, im, mask)
+
+
+def func_img_only(task):
+    no = task[0]
+    im = resize(imread(task[1]), (BROWS, BCOLS)).astype(np.float32)
+    return (no, im)
+
+
+def build_image_bulk(list_of_files):
+    bulk = np.zeros((len(list_of_files), 2, BROWS, BCOLS))
+
+    print('Read files')
+    tasks = enumerate(list_of_files)
+    it = tqdm(tasks, total=len(list_of_files))
+    pool = mp.Pool(processes=4)
+    work = pool.imap_unordered(func, it)
+    pool.close()
+    pool.join()
+
+    print('Merge {} results'.format(len(list_of_files)))
+    for (i, x, y) in tqdm(work):
+        bulk[i, 0, ...] = x[...]
+        bulk[i, 1, ...] = y[...]
+    return bulk
+
+
+def build_test_bulk(list_of_files):
+    bulk = np.zeros((len(list_of_files), 1, BROWS, BCOLS))
+
+    tasks = enumerate(list_of_files)
+    it = tqdm(tasks, total=len(list_of_files))
+    pool = mp.Pool(processes=4)
+    work = pool.imap_unordered(func_img_only, it)
+    pool.close()
+    pool.join()
+
+    print('Merge {} results'.format(len(list_of_files)))
+    for (i, x) in tqdm(work):
+        bulk[i, 0, ...] = x[...]
+    return bulk
+
+
+
 if __name__ == "__main__":
     table = get_mask_statistics()
-    subj_stratified(table)
-    random_stratified(table)
+    lst = subj_stratified(table)
+
+    print('Build TRAIN bulk')
+    train = build_image_bulk(lst[0])
+    np.save('../data/processed/ssb_raw_train.npy', train)
+    del train
+
+    gc.collect()
+    print('Build VAL bulk')
+    val = build_image_bulk(lst[1])
+    np.save('../data/processed/ssb_raw_val.npy', val)
+    del val
+    gc.collect()
+
+    lst = random_stratified(table)
+    print('Build TRAIN bulk')
+    train = build_image_bulk(lst[0])
+    np.save('../data/processed/rsb_raw_train.npy', train)
+    del train
+    gc.collect()
+    print('Build VAL bulk')
+    val = build_image_bulk(lst[1])
+    np.save('../data/processed/rsb_raw_train.npy', val)
+    del val
+    gc.collect()
+
+    lst = test_files()
+    print(lst)
+    test = build_test_bulk(lst)
+    np.save('../data/processed/x_raw_test.npy', test)
+

@@ -8,7 +8,7 @@ import errno
 import json
 
 from model import UNet, DNet
-from keras.callbacks import ModelCheckpoint
+from keras.callbacks import ModelCheckpoint, EarlyStopping
 
 
 def maybe_mkdir(path):
@@ -26,39 +26,36 @@ def train(args):
     with open(os.path.join(args.save_dir, 'args.json'), 'w') as fout:
         json.dump(args.__dict__, fout)
 
-    maybe_mkdir(args.res)
-    args.res = args.res + 'fold-{}'.format(args.fold)
-
     print('-'*30)
     print('Loading and preprocessing train data...')
-    img = np.load(args.bulk)
-    mask = np.load(args.bulk.replace('_img_', '_mask_'))
+    train = np.load(args.train)
+    val = np.load(args.val)
 
-    train_index = np.load(args.index)
-    val_index = np.load(args.val_index)
+    mean = np.mean(train[:, [0], ...], axis=0, keepdims=True)
+    std = np.std(train[:, [0], ...], axis=0, keepdims=True)
+    train_mask = (train[:, [1], ...] > 0.5).astype(np.uint8)
+    val_mask = (val[:, [1], ...] > 0.5).astype(np.uint8)
 
-    img_train = img[train_index, ...]
-    mask_train = mask[train_index, ...]
-    img_val = img[val_index, ...]
-    mask_val = mask[val_index, ...]
+    train_img = (train[:, [0], ...] - np.repeat(mean, train.shape[0], axis=0)) / np.repeat(std, train.shape[0], axis=0)
+    val_img = (val[:, [0], ...] - np.repeat(mean, val.shape[0], axis=0)) / np.repeat(std, val.shape[0], axis=0)
+
 
     print('-'*30)
     print('Creating and compiling model...')
-    if args.model == 'dnet':
-        model = DNet(args)
-    else:
-        model = UNet(args)
+    model = UNet(args)
     best_path = os.path.join(args.save_dir, 'ckpt-best.hdf5')
     ckpt_best = ModelCheckpoint(best_path,
                                 monitor='val_loss', save_best_only=True)
+
+    est = EarlyStopping(monitor='val_loss', patience=3)
     print('-'*30)
     print('Fitting model...')
-    history = model.fit(img_train, mask_train,
-                        validation_data=(img_val, mask_val),
+    history = model.fit(train_img, train_mask,
+                        validation_data=(val_img, val_mask),
                         batch_size=args.batch_size,
                         nb_epoch=args.num_epochs,
                         verbose=1, shuffle=True,
-                        callbacks=[ckpt_best])
+                        callbacks=[ckpt_best, est])
 
     print('Save history')
     path = os.path.join(args.save_dir, 'history.json')
@@ -66,25 +63,29 @@ def train(args):
     with open(path, 'w') as fout:
         json.dump(history.history, fout)
 
-    print('-'*30)
-    print('Save model structure data...')
-    json_string = model.to_json()
-    path = os.path.join(args.save_dir, 'model.json')
-    with open(path, 'w') as fout:
-        fout.write(json_string)
-
+    # print('-'*30)
+    # print('Save model structure data...')
+    # json_string = model.to_json()
+    # path = os.path.join(args.save_dir, 'model.json')
+    # with open(path, 'w') as fout:
+    #     fout.write(json_string)
+    #
     model.load_weights(best_path)
 
-    print('-'*30)
-    print('Predicting masks on all data')
-    # lets predicts the whole train (train, val, test) + test
-
-    mask_train = model.predict(img, verbose=1)
-    np.save(args.res + 'train.npy', mask_train)
-
     test = np.load(args.test)
-    mask = model.predict(test, verbose=1)
-    np.save(args.res + 'test.npy', mask)
+    test_img = (train[:, [0], ...] - np.repeat(mean, test.shape[0], axis=0)) / np.repeat(std, test.shape[0], axis=0)
+
+    print('Predict test')
+    mask = model.predict(test_img, batch_size=args.batch_size, verbose=1)
+    np.save(os.path.join(args.save_dir, 'ssb_test_mask.npy'), mask)
+
+
+
+    #
+    # print('-'*30)
+    #
+    # # lets predicts the whole train (train, val, test) + test
+    # #
 
 
 def main():
@@ -93,37 +94,21 @@ def main():
                         help='path to data folder: raw and processed')
     parser.add_argument('--save_dir', type=str, default='../models/tmp',
                         help='directory to store checkpointed models')
-    parser.add_argument('--img_width', type=int, default=80,
-                        help='image width')
-    parser.add_argument('--img_height', type=int, default=64,
-                        help='image height')
     parser.add_argument('--batch_size', type=int, default=64,
                         help='minibatch size')
     parser.add_argument('--num_epochs', type=int, default=10,
                         help='number of epochs')
-    # yes, masks path will be compute in dataloader
-    parser.add_argument('--fold', type=int, default=0,
-                        help='number of fold to train')
-    parser.add_argument('--bulk', type=str, 
-                        default='../data/processed/train_img_80x64.npy',
+
+    parser.add_argument('--train', type=str,
+                        default='../data/processed/ssb_raw_train.npy',
                         help='path to bulk of train imgs npy')
+    parser.add_argument('--val', type=str,
+                        default='../data/processed/ssb_raw_val.npy',
+                        help='path to bulk of val imgs npy')
     parser.add_argument('--test', type=str,
-                        default='../data/processed/test_img_80x64.npy')
-    # parser.add_argument('--index', type=str,
-    #                     default='../data/processed/folds/train-{}.npy',
-    #                     help='path to bulk of val imgs npy')
-    # parser.add_argument('--val_index', type=str,
-    #                     default='../data/processed/folds/val-{}.npy')
-    parser.add_argument('--model', type=str,
-                        default='unet')
-    parser.add_argument('--res', type=str,
-                        default='../data/predict-0/')
+                        default='../data/processed/test.npy')
+
     args = parser.parse_args()
-
-    assert args.fold in range(0, 9), "Wrong fold specified"
-    args.index = '../data/processed/folds/train-{}.npy'.format(args.fold)
-    args.val_index = '../data/processed/folds/val-{}.npy'.format(args.fold)
-
     train(args)
 
 
