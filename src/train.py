@@ -7,7 +7,7 @@ import os
 import errno
 import json
 
-from model import UNet, DNet
+from model import UNet
 from keras.callbacks import ModelCheckpoint, EarlyStopping
 
 
@@ -59,33 +59,25 @@ def train(args):
 
     print('Save history')
     path = os.path.join(args.save_dir, 'history.json')
-
+    #
     with open(path, 'w') as fout:
         json.dump(history.history, fout)
 
     # print('-'*30)
-    # print('Save model structure data...')
-    # json_string = model.to_json()
-    # path = os.path.join(args.save_dir, 'model.json')
-    # with open(path, 'w') as fout:
-    #     fout.write(json_string)
+    print('Save model structure data...')
+    json_string = model.to_json()
+    path = os.path.join(args.save_dir, 'model.json')
+    with open(path, 'w') as fout:
+        fout.write(json_string)
     #
     model.load_weights(best_path)
 
     test = np.load(args.test)
-    test_img = (train[:, [0], ...] - np.repeat(mean, test.shape[0], axis=0)) / np.repeat(std, test.shape[0], axis=0)
+    test_img = (test[:, [0], ...] - np.repeat(mean, test.shape[0], axis=0)) / np.repeat(std, test.shape[0], axis=0)
 
     print('Predict test')
     mask = model.predict(test_img, batch_size=args.batch_size, verbose=1)
     np.save(os.path.join(args.save_dir, 'ssb_test_mask.npy'), mask)
-
-
-
-    #
-    # print('-'*30)
-    #
-    # # lets predicts the whole train (train, val, test) + test
-    # #
 
 
 def main():
@@ -106,7 +98,7 @@ def main():
                         default='../data/processed/ssb_raw_val.npy',
                         help='path to bulk of val imgs npy')
     parser.add_argument('--test', type=str,
-                        default='../data/processed/test.npy')
+                        default='../data/processed/x_raw_test.npy')
 
     args = parser.parse_args()
     train(args)
