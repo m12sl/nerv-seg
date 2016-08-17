@@ -9,8 +9,8 @@ import matplotlib.pyplot as plt
 
 def elastic_transform(X, y=None, alpha=None, sigma=None, alpha_affine=None, random_state=None):
     alpha = X.shape[1] * 2 if alpha is None else alpha
-    sigma = X.shape[1] * 0.08 if sigma is None else sigma
-    alpha_affine = X.shape[1] * 0.08 if alpha_affine is None else alpha_affine
+    sigma = X.shape[1] * 0.4 if sigma is None else sigma
+    alpha_affine = X.shape[1] * 0.1 if alpha_affine is None else alpha_affine
     random_state = np.random.RandomState(None) if random_state is None else random_state
 
     shape_size = X.shape

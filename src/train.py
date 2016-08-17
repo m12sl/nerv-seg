@@ -45,8 +45,13 @@ def train(args):
     img = np.load(args.bulk)
     mask = np.load(args.bulk.replace('_img_', '_mask_'))
 
-    train_index = np.load(args.index)
-    val_index = np.load(args.val_index)
+    #train_index = np.load(args.index)
+    #val_index = np.load(args.val_index)
+    index = np.arange(len(img))
+    np.random.seed(442)
+    np.random.shuffle(index)
+    train_index = index[:4800]
+    val_index = index[4800:]
     
     img_train = img[train_index, ...]
     img_val = img[val_index, ...]
@@ -54,11 +59,11 @@ def train(args):
     mask_val = mask[val_index, ...]
     print("Train shape:", img_train.shape, ", valid shape: ", img_val.shape)
 
-    datagen_train = MyGenerator(horizontal_flip_prob=0.5, 
-                                vertical_flip_prob=0.5, 
+    datagen_train = MyGenerator(horizontal_flip_prob=0., 
+                                vertical_flip_prob=0., 
                                 elastic_alpha=2, 
-                                elastic_sigma=0.08, 
-                                affine_alpha=0.08)
+                                elastic_sigma=0.4, 
+                                affine_alpha=0.1)
 
     print('-'*30)
     print('Fitting model...')
