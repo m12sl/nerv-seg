@@ -86,9 +86,9 @@ def main():
                         help='path to data folder: raw and processed')
     parser.add_argument('--save_dir', type=str, default='../models/tmp',
                         help='directory to store checkpointed models')
-    parser.add_argument('--batch_size', type=int, default=64,
+    parser.add_argument('--batch_size', type=int, default=32,
                         help='minibatch size')
-    parser.add_argument('--num_epochs', type=int, default=10,
+    parser.add_argument('--num_epochs', type=int, default=20,
                         help='number of epochs')
 
     parser.add_argument('--train', type=str,

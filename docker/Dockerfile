@@ -1,10 +1,10 @@
-FROM nvidia/cuda:7.5-cudnn4-devel
+FROM nvidia/cuda:8.0-cudnn5-devel
 # Based on original tf dockerfile https://github.com/tensorflow/tensorflow/blob/master/tensorflow/tools/docker/Dockerfile.gpu
 
 MAINTAINER Alex Ozerin <m12sl@yandex.ru>
 
 ARG THEANO_VERSION=rel-0.8.2
-ARG KERAS_VERSION=1.0.6
+ARG KERAS_VERSION=1.0.7
 
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -57,11 +57,13 @@ RUN pip3 install --pre \
 
 
 # Upgrade six
-ENV CUDA_ROOT /usr/local/cuda
-ENV THEANO_FLAGS "floatX=float32,device=gpu,optimizer_including=cudnn,nvcc.fastmath=True,blas.ldflags='-L/usr/lib/openblas-base -lopenblas'"
-RUN pip3 install git+git://github.com/Theano/Theano.git@${THEANO_VERSION}
+ENV CUDA_ROOT=/usr/local/cuda \
+    THEANO_FLAGS="floatX=float32,device=gpu,optimizer_including=cudnn,nvcc.fastmath=True,blas.ldflags='-L/usr/lib/openblas-base -lopenblas'"
 
-RUN pip3 install git+git://github.com/fchollet/keras.git@${KERAS_VERSION}
+
+RUN pip3 install git+git://github.com/Theano/Theano.git@${THEANO_VERSION} && \
+    pip3 install git+git://github.com/fchollet/keras.git@${KERAS_VERSION}
+
 
 # Mount volumes for actual
 VOLUME ["/src", "/data", "/models"]
