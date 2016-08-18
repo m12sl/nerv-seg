@@ -10,6 +10,7 @@ ARG KERAS_VERSION=1.0.7
 RUN apt-get update && apt-get install -y --no-install-recommends \
         software-properties-common \
         build-essential \
+        cmake \
         curl \
         git \
         wget \
@@ -22,6 +23,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libhdf5-dev \
         zip \
         zlib1g-dev \
+        libavformat-dev \
+        libjasper-dev \
+        libjpeg-dev \
+        libswscale-dev \
+        libtbb2 \
+        libtbb-dev \
+        libtiff-dev \
+        libpng-dev \
+        libpq-dev \
         libhdf5-dev \
         libyaml-dev \
         libjpeg-dev \
@@ -38,7 +48,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         python3-pip \
         python3-h5py \
         python3-yaml \
+        python3-tk \
         swig \
+        yasm \
         && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
@@ -52,8 +64,35 @@ RUN pip3 install --pre \
         jupyter \
         matplotlib \
         cython \
+        flake8 \
+        pep8 \
         && \
     python3 -m ipykernel.kernelspec
+
+RUN wget https://github.com/Itseez/opencv/archive/3.0.0.zip \
+    && unzip 3.0.0.zip \
+    && mkdir /opencv-3.0.0/cmake_binary \
+    && cd /opencv-3.0.0/cmake_binary \
+    && cmake -DBUILD_TIFF=ON \
+        -DBUILD_opencv_java=OFF \
+        -DWITH_CUDA=OFF \
+        -DENABLE_AVX=ON \
+        -DWITH_OPENGL=ON \
+        -DWITH_OPENCL=ON \
+        -DWITH_IPP=ON \
+        -DWITH_TBB=ON \
+        -DWITH_EIGEN=ON \
+        -DWITH_V4L=ON \
+        -DBUILD_TESTS=OFF \
+        -DBUILD_PERF_TESTS=OFF \
+        -DCMAKE_BUILD_TYPE=RELEASE \
+        -DCMAKE_INSTALL_PREFIX=$(python3 -c "import sys; print(sys.prefix)") \
+        -DPYTHON_EXECUTABLE=$(which python3) \
+        -DPYTHON_INCLUDE_DIR=$(python3 -c "from distutils.sysconfig import get_python_inc; print(get_python_inc())") \
+        -DPYTHON_PACKAGES_PATH=$(python3.5 -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())") .. \
+    && make install \
+    && rm /3.0.0.zip \
+    && rm -r /opencv-3.0.0
 
 
 # Upgrade six

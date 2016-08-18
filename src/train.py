@@ -7,6 +7,8 @@ import os
 import errno
 import json
 
+from generator import MyGenerator
+
 from model import UNet
 from keras.callbacks import ModelCheckpoint, EarlyStopping
 
@@ -50,12 +52,31 @@ def train(args):
     est = EarlyStopping(monitor='val_loss', patience=3)
     print('-'*30)
     print('Fitting model...')
-    history = model.fit(train_img, train_mask,
-                        validation_data=(val_img, val_mask),
-                        batch_size=args.batch_size,
-                        nb_epoch=args.num_epochs,
-                        verbose=1, shuffle=True,
-                        callbacks=[ckpt_best, est])
+
+    datagen_train = MyGenerator(horizontal_flip_prob=0.,
+                                vertical_flip_prob=0.,
+                                elastic_alpha=2,
+                                elastic_sigma=0.4,
+                                affine_alpha=0.1)
+
+    history = model.fit_generator(datagen_train.flow(train_img,
+                                                     train_mask,
+                                                     batch_size=args.batch_size,
+                                                     shuffle=True),
+                                  samples_per_epoch=len(train_img),
+                                  validation_data=(val_img, val_img),
+                                  verbose=1,
+                                  nb_worker=4,
+                                  nb_epoch=args.num_epochs,
+                                  callbacks=[ckpt_best, est],
+                                  pickle_safe=True)
+    #
+    # history = model.fit(train_img, train_mask,
+    #                     validation_data=(val_img, val_mask),
+    #                     batch_size=args.batch_size,
+    #                     nb_epoch=args.num_epochs,
+    #                     verbose=1, shuffle=True,
+    #                     callbacks=[ckpt_best, est])
 
     print('Save history')
     path = os.path.join(args.save_dir, 'history.json')
