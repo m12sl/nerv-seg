@@ -3,7 +3,10 @@ from keras.layers import Input, merge, Convolution2D, MaxPooling2D, UpSampling2D
 from keras.layers import AtrousConvolution2D, Activation, Dropout, BatchNormalization
 from keras.optimizers import Adam
 
-from balancing import BROWS, BCOLS
+# from balancing import BROWS, BCOLS
+BROWS = 128
+BCOLS = 160
+
 
 from keras import backend as K
 
@@ -17,8 +20,18 @@ def dice_coef(y_true, y_pred):
     return (2. * intersection + SMOOTH) / (K.sum(y_true_f) + K.sum(y_pred_f) + SMOOTH)
 
 
+def dice_coef2(y_true, y_pred):
+    y_true_f = K.batch_flatten(y_true)
+    y_pred_f = K.batch_flatten(y_pred)
+    intersection = 2. * K.sum(y_true_f * y_pred_f, axis=1, keepdims=True) + SMOOTH
+    union = K.sum(y_true_f, axis=1, keepdims=True) + \
+            K.sum(y_pred_f, axis=1, keepdims=True) + \
+            SMOOTH
+    return K.mean(intersection / union)
+
+
 def dice_coef_loss(y_true, y_pred):
-    return -dice_coef(y_true, y_pred)
+    return -dice_coef2(y_true, y_pred)
 
 
 def UNet(args):
@@ -103,7 +116,8 @@ def UNet(args):
 
     model = Model(input=inputs, output=output)
 
-    model.compile(optimizer=Adam(lr=1e-4), loss='binary_crossentropy', metrics=['accuracy'])
+    # model.compile(optimizer=Adam(lr=1e-4), loss='binary_crossentropy', metrics=['accuracy'])
+    model.compile(optimizer=Adam(lr=1e-4), loss=dice_coef_loss, metrics=[dice_coef])
 
     return model
 
@@ -129,6 +143,6 @@ def DNet(args):
     conv6 = Convolution2D(1, 1, 1, activation='sigmoid')(conv5)
 
     model = Model(input=inputs, output=conv6)
-    model.compile(optimizer=Adam(lr=1e-2), loss=dice_coef_loss, metrics=[dice_coef])
+    model.compile(optimizer=Adam(lr=1e-2), loss=dice_coef_loss, metrics=[dice_coef2])
 
     return model
