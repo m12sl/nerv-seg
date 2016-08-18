@@ -3,14 +3,14 @@ from __future__ import print_function
 import numpy as np
 import os
 import cv2
-from data import image_cols, image_rows
+from balancing import COLS, ROWS
 import argparse
 
 
 def prep(img):
     img = img.astype('float32')
     img = cv2.threshold(img, 0.5, 1., cv2.THRESH_BINARY)[1].astype(np.uint8)
-    img = cv2.resize(img, (image_cols, image_rows))
+    img = cv2.resize(img, (COLS, ROWS))
     return img
 
 
@@ -30,16 +30,26 @@ def run_length_enc(label):
 
 
 def submission(args):
+    import os
+    import re
 #   from data import load_test_data
  #   imgs_test, imgs_id_test = load_test_data(args)
   #  imgs_test = np.load('../data/processed/test.npy')
-    imgs_id_test = np.load('../data/processed/test_idx.npy')
-    
+  #   imgs_id_test = np.load('../data/processed/test_idx.npy')
+  #
     imgs_test = np.load(args.pred)
+    test = []
+    files = os.listdir('../data/raw/test')
+    for f in files:
+        r = re.match('(\d+).tif', f)
+        if r:
+            no = int(r.group(1))
+            test.append(no)
+    test.sort()
 
-    argsort = np.argsort(imgs_id_test)
-    imgs_id_test = imgs_id_test[argsort]
-    imgs_test = imgs_test[argsort]
+    # argsort = np.argsort(imgs_id_test)
+    # imgs_id_test = imgs_id_test[argsort]
+    # imgs_test = imgs_test[argsort]
 
     total = imgs_test.shape[0]
     ids = []
@@ -50,7 +60,7 @@ def submission(args):
         rle = run_length_enc(img)
 
         rles.append(rle)
-        ids.append(imgs_id_test[i])
+        ids.append(test[i])
 
         if i % 100 == 0:
             print('{}/{}'.format(i, total))
