@@ -5,4 +5,4 @@ nvidia-docker run --memory-swappiness=0 \
 		  -v $(pwd)/data:/data \
 	      -v $(pwd)/src:/src \
           -v $(pwd)/models:/models \
-          -it ker $@
+          -it darktower.mipt.su:5180/py3-ker python3 /src/train.py

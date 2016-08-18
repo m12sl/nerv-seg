@@ -61,7 +61,7 @@ def get_mask_statistics(path='../data/raw/train/'):
     return table
 
 
-def subj_stratified(table, seed=19231, with_unmasked=True):
+def subj_stratified(table, seed=19231, with_unmasked=True, extreme=False):
     def pack(keys, table, flag):
         ret = []
         for k in keys:
@@ -112,6 +112,29 @@ def random_stratified(table, seed=19231, with_unmasked=True):
     val_list = files[:N]
 
     return train_list, val_list
+
+
+def extreme_random_stratified(table, seed=19231):
+    files = []
+    for subj, x in table.items():
+        if x['masked'] < 60:
+            files.extend(x['pos'])
+        if x['masked'] > 60:
+            files.extend(x['neg'])
+
+    files = sorted(files)
+    files = [(x, x[:-4] + '_mask.tif') for x in files]
+
+    np.random.seed(seed)
+    np.random.shuffle(files)
+
+    N = int(0.2 * len(files))
+
+    train_list = files[N:]
+    val_list = files[:N]
+
+    return train_list, val_list
+
 
 
 def test_files(path='../data/raw/test/'):
@@ -180,34 +203,49 @@ def build_test_bulk(list_of_files):
 
 if __name__ == "__main__":
     table = get_mask_statistics()
-    lst = subj_stratified(table)
+    # lst = subj_stratified(table)
+    lst = extreme_random_stratified(table)
 
     print('Build TRAIN bulk')
     train = build_image_bulk(lst[0])
-    np.save('../data/processed/ssb_raw_train.npy', train)
+    np.save('../data/processed/erb_raw_train.npy', train)
     del train
 
     gc.collect()
     print('Build VAL bulk')
     val = build_image_bulk(lst[1])
-    np.save('../data/processed/ssb_raw_val.npy', val)
+    np.save('../data/processed/erb_raw_val.npy', val)
     del val
     gc.collect()
 
-    lst = random_stratified(table)
-    print('Build TRAIN bulk')
-    train = build_image_bulk(lst[0])
-    np.save('../data/processed/rsb_raw_train.npy', train)
-    del train
-    gc.collect()
-    print('Build VAL bulk')
-    val = build_image_bulk(lst[1])
-    np.save('../data/processed/rsb_raw_train.npy', val)
-    del val
-    gc.collect()
 
-    lst = test_files()
-    print(lst)
-    test = build_test_bulk(lst)
-    np.save('../data/processed/x_raw_test.npy', test)
+    # print('Build TRAIN bulk')
+    # train = build_image_bulk(lst[0])
+    # np.save('../data/processed/ssb_raw_train.npy', train)
+    # del train
+    #
+    # gc.collect()
+    # print('Build VAL bulk')
+    # val = build_image_bulk(lst[1])
+    # np.save('../data/processed/ssb_raw_val.npy', val)
+    # del val
+    # gc.collect()
+    #
+    # lst = random_stratified(table)
+    # print('Build TRAIN bulk')
+    # train = build_image_bulk(lst[0])
+    # np.save('../data/processed/rsb_raw_train.npy', train)
+    # del train
+    # gc.collect()
+    #
+    # print('Build VAL bulk')
+    # val = build_image_bulk(lst[1])
+    # np.save('../data/processed/rsb_raw_val.npy', val)
+    # del val
+    # gc.collect()
+    #
+    # lst = test_files()
+    # print(lst)
+    # test = build_test_bulk(lst)
+    # np.save('../data/processed/x_raw_test.npy', test)
 
